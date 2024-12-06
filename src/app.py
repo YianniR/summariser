@@ -54,7 +54,7 @@ class ContentProcessor:
             chunks.append(text[start:end])
         return chunks
     
-    def summarize_chunk(self, text: str, prompt_template: str, level=1) -> Tuple[str, Dict[str, Dict[str, str]]]:
+    def summarize_chunk(self, text: str, summary_prompt: str, label_prompt: str, level=1) -> Tuple[str, Dict[str, Dict[str, str]]]:
         texts = self.chunk_text(text)
         summaries = {}
         current_labels = []
@@ -90,7 +90,7 @@ class ContentProcessor:
             
             # Include labels in summarization context
             labels_context = f"Current topic labels: {', '.join(current_labels)}\n\n"
-            prompt = labels_context + prompt_template.replace("{text}", text_)
+            prompt = labels_context + summary_prompt.replace("{text}", text_)
             
             response = self.anthropic_client.messages.create(
                 model="claude-3-sonnet-20240229",
