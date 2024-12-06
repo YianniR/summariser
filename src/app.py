@@ -27,15 +27,17 @@ class ContentProcessor:
         # Replace placeholders in prompt template
         prompt = prompt_template.replace("{text}", text).replace("{existing_labels}", context)
         
-        response = self.anthropic_client.completion(
-            prompt=f"\n\nHuman: {prompt}\n\nAssistant:",
+        response = self.anthropic_client.messages.create(
             model="claude-3-sonnet-20240229",
-            max_tokens_to_sample=200,
+            max_tokens=200,
             temperature=0.3,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
         )
         
         # Extract labels from response
-        new_labels = [label.strip() for label in response.completion.strip().split('\n')]
+        new_labels = [label.strip() for label in response.content[0].text.strip().split('\n')]
         print(f"Extracted labels: {new_labels}")
         return new_labels
 
@@ -96,14 +98,15 @@ class ContentProcessor:
                 labels_context = f"Current topic labels: {', '.join(current_labels)}\n\n"
                 prompt = labels_context + summary_prompt.replace("{text}", text_)
                 
-                # Replace the message.create() call with:
-                response = self.anthropic_client.completion(
-                    prompt=f"\n\nHuman: {prompt}\n\nAssistant:",
+                response = self.anthropic_client.messages.create(
                     model="claude-3-sonnet-20240229",
-                    max_tokens_to_sample=1000,
+                    max_tokens=1000,
                     temperature=0.7,
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ]
                 )
-                summary = response.completion.strip()
+                summary = response.content[0].text
 
                 current_summaries.append(summary)
                 
@@ -176,12 +179,39 @@ class ContentProcessor:
         
         summary, summaries_dict = self.summarize_chunk(transcript_text, summary_prompt, label_prompt)
         return transcript_text, summary, summaries_dict
-    
+        
     def process_website(self, url: str, summary_prompt: str, label_prompt: str) -> Tuple[str, str, Dict[str, Dict[str, str]]]:
         with st.spinner('Fetching website content...'):
             response = requests.get(url)
             soup = BeautifulSoup(response.content, 'html.parser')
-            text = soup.get_text()
+            
+            # Remove unwanted elements
+            for element in soup.find_all(['script', 'style', 'nav', 'header', 'footer', 'ads']):
+                element.decompose()
+            
+            # Try to find main content - look for common content containers
+            main_content = None
+            content_tags = [
+                soup.find('article'),
+                soup.find(class_='article-content'),
+                soup.find(class_='post-content'),
+                soup.find(id='content'),
+                soup.find(class_='content'),
+                soup.find('main'),
+                soup.find(class_='main-content'),
+                soup.find(class_='entry-content')
+            ]
+            
+            # Use the first matching content container we find
+            main_content = next((content for content in content_tags if content is not None), soup.body)
+            
+            # Get text and clean it up
+            if main_content:
+                text = main_content.get_text(separator='\n', strip=True)
+                # Remove extra whitespace and empty lines
+                text = '\n'.join(line.strip() for line in text.splitlines() if line.strip())
+            else:
+                text = soup.get_text(separator='\n', strip=True)
         
         summary, summaries_dict = self.summarize_chunk(text, summary_prompt, label_prompt)
         return text, summary, summaries_dict
