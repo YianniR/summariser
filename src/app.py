@@ -22,17 +22,16 @@ class ContentProcessor:
         # Replace placeholders in prompt template
         prompt = prompt_template.replace("{text}", text).replace("{existing_labels}", context)
         
-        response = self.anthropic_client.messages.create(
-            model="claude-3-sonnet-20240229",
-            max_tokens=200,
+        # Using completion() instead of messages.create()
+        response = self.anthropic_client.completion(
+            prompt=f"\n\nHuman: {prompt}\n\nAssistant:",
+            model="claude-2.1",
+            max_tokens_to_sample=200,
             temperature=0.3,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
         )
         
-        # Extract labels from response (one per line)
-        new_labels = [label.strip() for label in response.content[0].text.strip().split('\n')]
+        # Extract labels from response
+        new_labels = [label.strip() for label in response.completion.strip().split('\n')]
         print(f"Extracted labels: {new_labels}")
         return new_labels
 
@@ -90,17 +89,16 @@ class ContentProcessor:
             
             # Include labels in summarization context
             labels_context = f"Current topic labels: {', '.join(current_labels)}\n\n"
-            prompt = labels_context + summary_prompt.replace("{text}", text_)
+            prompt = labels_context + prompt_template.replace("{text}", text_)
             
-            response = self.anthropic_client.messages.create(
-                model="claude-3-sonnet-20240229",
-                max_tokens=1000,
+            # Using completion() instead of messages.create()
+            response = self.anthropic_client.completion(
+                prompt=f"\n\nHuman: {prompt}\n\nAssistant:",
+                model="claude-2.1",
+                max_tokens_to_sample=1000,
                 temperature=0.7,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
             )
-            summary = response.content[0].text
+            summary = response.completion.strip()
             current_summaries.append(summary)
             
             key = f"Level {level} - Chunk {i+1}"
