@@ -145,7 +145,7 @@ class ContentProcessor:
             return joined_summaries, summaries
         
         level += 1
-        final_summary, recursive_summaries = self.summarize_chunk(joined_summaries, prompt_template, level=level)
+        final_summary, recursive_summaries = self.summarize_chunk(joined_summaries, summary_prompt, label_prompt, level=level)
         
         # Update summaries with recursive results
         for k, v in recursive_summaries.items():
