@@ -269,7 +269,7 @@ def main():
         text = st.text_area("Enter your text:")
         if text and st.button("Process Text"):
             try:
-                summary, summaries = processor.summarize_chunk(text, prompt_template)
+                summary, summaries = processor.summarize_chunk(text, prompt_template, label_prompt_template)
                 st.session_state.current_summaries = summaries
                 st.session_state.current_source = "direct_input"
                 st.session_state.current_type = "text"
